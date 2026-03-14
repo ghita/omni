@@ -5,6 +5,19 @@ type DashboardOptions = {
   maxEvents?: number;
 };
 
+function formatTimestamp(iso: string): string {
+  return iso.substring(11, 19); // HH:MM:SS
+}
+
+function statusIcon(status?: string): string {
+  switch (status) {
+    case 'running': return '▶';
+    case 'success': return '✓';
+    case 'error':   return '✗';
+    default:        return '•';
+  }
+}
+
 // A simple CLI dashboard that can visualize operational events and show the latest user prompt and assistant reply. 
 // In interactive mode, it renders a dashboard in the terminal. 
 // In non-interactive mode or when visualization is disabled, it prints events linearly to stderr.
@@ -18,7 +31,7 @@ export class CliDashboard {
 
   constructor(options: DashboardOptions) {
     this.enabled = options.enabled;
-    this.maxEvents = options.maxEvents ?? 12;
+    this.maxEvents = options.maxEvents ?? 8;
   }
 
   setStatus(status: string) {
@@ -33,11 +46,9 @@ export class CliDashboard {
   }
 
   addEvent(event: OperationalEvent) {
-    const baseLine = `${event.timestamp} | ${event.summary}`;
-    this.events.push(baseLine);
-    for (const detail of event.details ?? []) {
-      this.events.push(`  ${detail}`);
-    }
+    const icon = statusIcon(event.status);
+    const time = formatTimestamp(event.timestamp);
+    this.events.push(`${time} ${icon} ${event.summary}`);
 
     if (this.events.length > this.maxEvents) {
       const overflow = this.events.length - this.maxEvents;
@@ -49,7 +60,9 @@ export class CliDashboard {
 
   // In non-interactive mode or when visualization is disabled, print events linearly to stderr with a simple format.
   printLinearEvent(event: OperationalEvent) {
-    process.stderr.write(`[event] ${event.timestamp} ${event.summary}\n`);
+    const icon = statusIcon(event.status);
+    const time = formatTimestamp(event.timestamp);
+    process.stderr.write(`[event] ${time} ${icon} ${event.summary}\n`);
     for (const detail of event.details ?? []) {
       process.stderr.write(`  ${detail}\n`);
     }
