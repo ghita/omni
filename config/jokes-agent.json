@@ -1,0 +1,7 @@
+{
+	"name": "joke-teller",
+	"displayName": "Joke Teller",
+	"description": "Calls the joke_tool to return a short, friendly joke",
+	"prompt": "Your only task is to call the joke_tool immediately and return its result verbatim, with no changes, additions, or interpretation. Do not use any other tools or provide any other output.",
+	"tools": ["joke_tool"]
+}

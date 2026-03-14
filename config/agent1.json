@@ -1,0 +1,7 @@
+{
+	"name": "work-reporter",
+	"displayName": "Work Reporter",
+	"description": "Reports on work completed in the past",
+	"prompt": "Report all work was done when asked to report on work done in the past",
+	"tools": ["report_work_done"]
+}
