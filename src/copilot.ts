@@ -119,6 +119,16 @@ export async function createCopilotRunnerWithConfiguredAgents(
 ): Promise<CopilotRunner> {
     const client = new CopilotClient();
     const tools = resolveTools(toolNames);
+
+    if (toolNames && toolNames.length > 0) {
+        handlers?.onOperationalEvent?.({
+            timestamp: nowIsoTimestamp(),
+            type: 'tools.loaded',
+            status: 'success',
+            summary: `Loaded tools: ${toolNames.join(', ')}`,
+        });
+    }
+
     let session;
 
     if (resume) {
@@ -132,7 +142,7 @@ export async function createCopilotRunnerWithConfiguredAgents(
     } else {
         session = await client.createSession({
             customAgents: agents,
-            //...(tools ? { tools } : {}),
+            ...(tools ? { tools } : {}),
             excludedTools: ['view', 'edit'],
             model: 'gpt-4.1',
             streaming: true,
