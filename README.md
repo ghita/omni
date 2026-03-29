@@ -53,3 +53,30 @@ Agent definitions are JSON files (array or single object) passed via `--agent-fi
 Tool definitions are JSON files passed via `--tools-file`.
 
 See the `config/` directory for examples.
+
+## Architecture
+
+- `src/cli.ts`: thin entrypoint.
+- `src/cliCommand.ts`: CLI command/options wiring.
+- `src/cliAction.ts`: runtime mode routing (interactive vs one-shot).
+- `src/cliWorkflow.ts`: interactive loop + one-shot execution helpers.
+- `src/configLoader.ts`: `zod`-validated config loading for agent/tool files.
+- `src/copilot.ts`: Copilot session lifecycle orchestration.
+- `src/eventMapper.ts`: session event to operational event translation.
+- `src/outputState.ts`: dashboard state model and execution tracking.
+- `src/outputRenderer.ts`: terminal rendering for dashboard snapshots.
+- `src/output.ts`: dashboard facade used by CLI workflows.
+
+## Extending Tools
+
+1. Add a new tool definition in `src/tools/`.
+2. Register the tool in `src/tools.ts`.
+3. Reference the tool name in a tools config file passed via `--tools-file`.
+
+If the tools file is invalid, the CLI now reports schema validation errors with paths.
+
+## Extending Event Mapping
+
+1. Add event translation logic in `src/eventMapper.ts`.
+2. Keep emitted shape aligned with `OperationalEvent` in `src/events.ts`.
+3. If dashboard behavior changes, update `src/outputState.ts` and related tests.
