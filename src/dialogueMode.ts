@@ -8,6 +8,7 @@ type DialogueOutputHandler = (text: string) => void;
 
 type TurnParticipants = {
   speakerName: string;
+  speakerPrompt: string; // PERSONA ADDED
   listenerName: string;
   speakerRunner: CopilotRunner;
 };
@@ -77,6 +78,7 @@ function createDialogueCompletedEvent(endedByAgreement: boolean): OperationalEve
 
 function buildDialoguePrompt(
   speakerName: string,
+  speakerPrompt: string, // PASSED FROM CONFIG
   listenerName: string,
   initialTask: string,
   transcript: string[],
@@ -84,6 +86,8 @@ function buildDialoguePrompt(
 ): string {
   const history = transcript.length > 0 ? transcript.join('\n\n') : '(no previous turns)';
   return [
+    `PERSONALITY: ${speakerPrompt}`,
+    '',
     `You are ${speakerName}.`,
     `You are negotiating with ${listenerName}.`,
     `Initial objective: ${initialTask}`,
@@ -104,6 +108,7 @@ export class DialogueSession {
   constructor(
     private readonly task: string,
     private readonly dialogueConfig: DialogueConfig,
+    private readonly agents: readonly CustomAgentConfig[],
     private readonly runners: readonly [CopilotRunner, CopilotRunner],
     private readonly onOperationalEvent: OperationalEventHandler,
     private readonly onOutput: DialogueOutputHandler,
@@ -138,8 +143,13 @@ export class DialogueSession {
 
   private selectTurnParticipants(turn: number): TurnParticipants {
     const speakerIsAgent1 = turn % 2 === 1;
+    const speakerConfig = speakerIsAgent1
+      ? this.agents.find((a) => a.name === this.dialogueConfig.agent1Name)
+      : this.agents.find((a) => a.name === this.dialogueConfig.agent2Name);
+
     return {
       speakerName: speakerIsAgent1 ? this.dialogueConfig.agent1Name : this.dialogueConfig.agent2Name,
+      speakerPrompt: speakerConfig?.prompt ?? '',
       listenerName: speakerIsAgent1 ? this.dialogueConfig.agent2Name : this.dialogueConfig.agent1Name,
       speakerRunner: speakerIsAgent1 ? this.runners[0] : this.runners[1],
     };
@@ -148,6 +158,7 @@ export class DialogueSession {
   private buildTurnPrompt(participants: TurnParticipants): string {
     return buildDialoguePrompt(
       participants.speakerName,
+      participants.speakerPrompt,
       participants.listenerName,
       this.task,
       this.transcript,
@@ -222,6 +233,7 @@ export async function runDialogueMode(
     const session = new DialogueSession(
       task,
       dialogueConfig,
+      [agent1Config, agent2Config],
       [runner1, runner2],
       onOperationalEvent,
       (text) => process.stdout.write(text),
