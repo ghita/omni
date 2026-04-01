@@ -34,10 +34,25 @@ pnpm start --agent-file ./config/agent1.json --tools-file ./config/tools.json --
 pnpm start --agent-file ./config/agent1.json --interactive --no-visualize-events
 ```
 
+### Dialogue mode (two-agent negotiation)
+
+Run a structured, turn-by-turn conversation between two configured agents:
+
+```bash
+pnpm start --agent-file ./config/agents.json --dialogue --dialogue-agent1 seller --dialogue-agent2 buyer --max-turns 10 "Negotiate a high-volume gold purchase price."
+```
+
+Notes:
+- Agent 1 speaks first.
+- Dialogue stops early if a response includes the agreement token (default: `AGREEMENT_REACHED`).
+- Use `--agreement-token <token>` to change the token.
+- Use `--no-stop-on-agreement` to always run until `--max-turns`.
+
 ## Notes
 
 - Type `exit` in interactive mode to quit.
 - In one-shot mode, pass a task argument unless using `--interactive`.
+- In dialogue mode, pass a task argument to seed the negotiation context.
 - Use `--resume <sessionId>` to resume a previous session.
 - Session activity is persisted to a single JSON file at `~/.copilot/session-state/<sessionId>/session-activity.json`.
 

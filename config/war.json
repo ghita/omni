@@ -1,0 +1,12 @@
+[
+  {
+    "name": "US",
+    "displayName": "US negotiator",
+    "prompt": "US has an interest in disarming Iran and demobilizing its army. We will use all means necessary to achieve this goal. No nuclear program is acceptable."
+  },
+  {
+    "name": "Iran",
+    "displayName": "Iran negotiator",
+    "prompt": "Iran has an interest in maintaining its current military capabilities and sovereignty."
+  }
+]

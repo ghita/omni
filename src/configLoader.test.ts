@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { loadAgentConfigs, loadToolNames } from './configLoader';
+import { loadAgentConfigs, loadToolNames, resolveDialogueConfig } from './configLoader';
 
 function createTempJsonFile(t: TestContext, content: unknown): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'omni-config-test-'));
@@ -43,4 +43,50 @@ test('loadAgentConfigs supports single object and array', (t) => {
 
 test('loadAgentConfigs returns empty list when path is undefined', () => {
   assert.deepEqual(loadAgentConfigs(undefined), []);
+});
+
+test('resolveDialogueConfig returns undefined when dialogue mode is disabled', () => {
+  const result = resolveDialogueConfig({}, [
+    { name: 'seller', prompt: 'Sell gold' },
+    { name: 'buyer', prompt: 'Buy gold' },
+  ]);
+  assert.equal(result, undefined);
+});
+
+test('resolveDialogueConfig validates and normalizes dialogue options', () => {
+  const result = resolveDialogueConfig(
+    {
+      dialogue: true,
+      dialogueAgent1: 'seller',
+      dialogueAgent2: 'buyer',
+      maxTurns: '12',
+      agreementToken: 'DEAL_DONE',
+    },
+    [
+      { name: 'seller', prompt: 'Sell gold' },
+      { name: 'buyer', prompt: 'Buy gold' },
+    ],
+  );
+
+  assert.ok(result);
+  assert.equal(result?.agent1Name, 'seller');
+  assert.equal(result?.agent2Name, 'buyer');
+  assert.equal(result?.maxTurns, 12);
+  assert.equal(result?.stopOnAgreement, true);
+  assert.equal(result?.agreementToken, 'DEAL_DONE');
+});
+
+test('resolveDialogueConfig throws for unknown agent names', () => {
+  assert.throws(
+    () =>
+      resolveDialogueConfig(
+        {
+          dialogue: true,
+          dialogueAgent1: 'seller',
+          dialogueAgent2: 'buyer',
+        },
+        [{ name: 'seller', prompt: 'Sell gold' }],
+      ),
+    /Unknown dialogue agent name/,
+  );
 });
