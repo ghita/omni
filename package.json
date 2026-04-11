@@ -12,13 +12,13 @@
     "test": "tsx --test src/**/*.test.ts"
   },
   "dependencies": {
-    "@github/copilot-sdk": "^0.1.0",
-    "commander": "^11.0.0",
+    "@github/copilot-sdk": "^0.2.1",
+    "commander": "^11.1.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@types/node": "^25.3.5",
-    "tsx": "^4.7.0",
-    "typescript": "^5.0.0"
+    "@types/node": "^25.5.2",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.2"
   }
 }

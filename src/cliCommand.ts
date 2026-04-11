@@ -18,6 +18,11 @@ export function createCliProgram(): Command {
     .option('--max-turns <count>', 'Maximum turns in dialogue mode (default: 10)')
     .option('--no-stop-on-agreement', 'Do not stop dialogue early when agreement token appears')
     .option('--agreement-token <token>', 'Token that signals agreement (default: AGREEMENT_REACHED)')
+    .option('--telemetry-otlp-endpoint <url>', 'Enable OpenTelemetry export to an OTLP HTTP endpoint')
+    .option('--telemetry-source-name <name>', 'Set OpenTelemetry instrumentation source name')
+    .option('--telemetry-exporter-type <type>', 'Telemetry exporter type (otlp-http or file)')
+    .option('--telemetry-file-path <path>', 'Enable telemetry file exporter by writing JSON lines to a file')
+    .option('--telemetry-capture-content', 'Capture prompt/response content in telemetry spans')
     .argument('[task]', 'Task prompt to resolve in one-shot mode')
     .action(async (task, options) => {
       await runCliAction(task, options);

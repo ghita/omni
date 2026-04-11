@@ -1,7 +1,7 @@
 import { createCopilotRunnerWithConfiguredAgents, runCopilotTaskWithConfiguredAgents } from './copilot';
 import { CliDashboard } from './output';
 import { OperationalEvent } from './events';
-import { CustomAgentConfig } from '@github/copilot-sdk';
+import { CustomAgentConfig, TelemetryConfig } from '@github/copilot-sdk';
 import * as readline from 'node:readline';
 export { runDialogueMode } from './dialogueMode';
 
@@ -33,8 +33,9 @@ export async function runInteractiveMode(
   visualizeEvents: boolean,
   dashboard: CliDashboard,
   onOperationalEvent: OperationalEventHandler,
+  telemetryConfig?: TelemetryConfig,
 ) {
-  const runner = await createCopilotRunnerWithConfiguredAgents(agents, resume, toolNames, {
+  const runner = await createCopilotRunnerWithConfiguredAgents(agents, resume, toolNames, telemetryConfig, {
     onOperationalEvent,
   });
 
@@ -79,8 +80,9 @@ export async function runOneShotMode(
   resume: string | undefined,
   toolNames: string[] | undefined,
   onOperationalEvent: OperationalEventHandler,
+  telemetryConfig?: TelemetryConfig,
 ) {
-  const result = await runCopilotTaskWithConfiguredAgents(task, agents, resume, toolNames, {
+  const result = await runCopilotTaskWithConfiguredAgents(task, agents, resume, toolNames, telemetryConfig, {
     onOperationalEvent,
   });
 

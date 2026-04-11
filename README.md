@@ -56,6 +56,32 @@ Notes:
 - Use `--resume <sessionId>` to resume a previous session.
 - Session activity is persisted to a single JSON file at `~/.copilot/session-state/<sessionId>/session-activity.json`.
 
+## Telemetry (OpenTelemetry + Jaeger)
+
+Start local trace visualization stack:
+
+```bash
+podman compose -f docker-compose.telemetry.yml up -d
+```
+
+Run Omni with telemetry export enabled:
+
+```bash
+pnpm start --agent-file .\config\agent1.json --telemetry-otlp-endpoint http://localhost:4318 --telemetry-source-name omni-cli --telemetry-capture-content "Tell me a joke"
+```
+
+View traces in Jaeger at `http://localhost:16686`.
+The `--telemetry-source-name` value is also used as OpenTelemetry `service.name`, so Jaeger shows it in the Service dropdown.
+
+CLI telemetry flags:
+- `--telemetry-otlp-endpoint <url>`
+- `--telemetry-source-name <name>`
+- `--telemetry-exporter-type <otlp-http|file>`
+- `--telemetry-file-path <path>`
+- `--telemetry-capture-content`
+
+See `doc\telemetry.md` for full setup, architecture, troubleshooting, and file-export mode.
+
 ## Build
 
 ```bash

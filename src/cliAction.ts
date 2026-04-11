@@ -1,6 +1,7 @@
 import { CliDashboard } from './output';
 import { loadAgentConfigs, loadToolNames, resolveDialogueConfig } from './configLoader';
 import { buildEventHandler, runDialogueMode, runInteractiveMode, runOneShotMode } from './cliWorkflow';
+import { normalizeTelemetryConfig } from './telemetryConfig';
 
 export type CliActionOptions = {
   agentFile?: string;
@@ -14,6 +15,11 @@ export type CliActionOptions = {
   maxTurns?: number | string;
   stopOnAgreement?: boolean;
   agreementToken?: string;
+  telemetryOtlpEndpoint?: string;
+  telemetrySourceName?: string;
+  telemetryExporterType?: string;
+  telemetryFilePath?: string;
+  telemetryCaptureContent?: boolean;
 };
 
 export async function runCliAction(task: string | undefined, options: CliActionOptions) {
@@ -42,6 +48,7 @@ export async function runCliAction(task: string | undefined, options: CliActionO
     process.exit(1);
   }
   const visualizeEvents = options.visualizeEvents !== false;
+  const telemetryConfig = normalizeTelemetryConfig(options);
   const dashboard = new CliDashboard({ enabled: interactiveMode && visualizeEvents });
   const onOperationalEvent = buildEventHandler(visualizeEvents, interactiveMode, dashboard);
 
@@ -56,12 +63,12 @@ export async function runCliAction(task: string | undefined, options: CliActionO
       console.error('Task is required in dialogue mode. Pass a task prompt to seed the negotiation.');
       process.exit(1);
     }
-    await runDialogueMode(task, agents, toolNames, dialogueConfig, onOperationalEvent);
+    await runDialogueMode(task, agents, toolNames, dialogueConfig, onOperationalEvent, telemetryConfig);
     return;
   }
 
   if (interactiveMode) {
-    await runInteractiveMode(agents, options.resume, toolNames, visualizeEvents, dashboard, onOperationalEvent);
+    await runInteractiveMode(agents, options.resume, toolNames, visualizeEvents, dashboard, onOperationalEvent, telemetryConfig);
     return;
   }
 
@@ -70,5 +77,5 @@ export async function runCliAction(task: string | undefined, options: CliActionO
     process.exit(1);
   }
 
-  await runOneShotMode(task, agents, options.resume, toolNames, onOperationalEvent);
+  await runOneShotMode(task, agents, options.resume, toolNames, onOperationalEvent, telemetryConfig);
 }

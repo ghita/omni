@@ -1,8 +1,9 @@
-import { CopilotClient, CustomAgentConfig } from '@github/copilot-sdk';
+import { CopilotClient, CustomAgentConfig, TelemetryConfig } from '@github/copilot-sdk';
 import { resolveTools } from './tools';
 import { SessionActivityLogger } from './sessionLog';
 import { createEventMapper, SessionEvent } from './eventMapper';
 import { OperationalEvent } from './events';
+import { describeTelemetryConfig, normalizedServiceNameFromTelemetry } from './telemetryConfig';
 
 export type { OperationalEvent } from './events';
 
@@ -24,12 +25,31 @@ export async function createCopilotRunnerWithConfiguredAgents(
     agents: CustomAgentConfig[],
     resume: string | undefined,
     toolNames?: string[],
+    telemetry?: TelemetryConfig,
     handlers?: CopilotOutputHandlers,
 ): Promise<CopilotRunner> {
-    const client = new CopilotClient();
+    const serviceName = telemetry ? normalizedServiceNameFromTelemetry(telemetry) : undefined;
+    const client = telemetry
+        ? new CopilotClient({
+            telemetry,
+            ...(serviceName ? { env: { ...process.env, OTEL_SERVICE_NAME: serviceName } } : {}),
+        })
+        : new CopilotClient();
     const tools = resolveTools(toolNames);
     const model = 'gpt-4.1';
     const activityLogger = new SessionActivityLogger({ resumeSessionId: resume, model });
+
+    if (telemetry) {
+        handlers?.onOperationalEvent?.({
+            timestamp: nowIsoTimestamp(),
+            type: 'telemetry.configured',
+            status: 'info',
+            summary: `Telemetry enabled for sourceName: ${telemetry.sourceName}, OtlpEndpoint: ${telemetry.otlpEndpoint}`,
+            category: 'session',
+            phase: 'info',
+            details: describeTelemetryConfig(telemetry),
+        });
+    }
 
     if (toolNames && toolNames.length > 0) {
         handlers?.onOperationalEvent?.({
@@ -113,9 +133,10 @@ export async function runCopilotTaskWithConfiguredAgents(
     agents: CustomAgentConfig[],
     resume: string | undefined,
     toolNames?: string[],
+    telemetry?: TelemetryConfig,
     handlers?: CopilotOutputHandlers,
 ) {
-    const runner = await createCopilotRunnerWithConfiguredAgents(agents, resume, toolNames, handlers);
+    const runner = await createCopilotRunnerWithConfiguredAgents(agents, resume, toolNames, telemetry, handlers);
     try {
         return await runner.sendTask(task);
     } finally {

@@ -1,4 +1,4 @@
-import { CustomAgentConfig } from '@github/copilot-sdk';
+import { CustomAgentConfig, TelemetryConfig } from '@github/copilot-sdk';
 import { CopilotRunner, createCopilotRunnerWithConfiguredAgents } from './copilot';
 import { DialogueConfig } from './configLoader';
 import { OperationalEvent } from './events';
@@ -210,6 +210,7 @@ export async function runDialogueMode(
   toolNames: string[] | undefined,
   dialogueConfig: DialogueConfig,
   onOperationalEvent: OperationalEventHandler,
+  telemetryConfig?: TelemetryConfig,
 ) {
   const agent1Config = agents.find((agent) => agent.name === dialogueConfig.agent1Name);
   const agent2Config = agents.find((agent) => agent.name === dialogueConfig.agent2Name);
@@ -221,10 +222,10 @@ export async function runDialogueMode(
   let runner2: CopilotRunner | undefined;
 
   try {
-    runner1 = await createCopilotRunnerWithConfiguredAgents([agent1Config], undefined, toolNames, {
+    runner1 = await createCopilotRunnerWithConfiguredAgents([agent1Config], undefined, toolNames, telemetryConfig, {
       onOperationalEvent,
     });
-    runner2 = await createCopilotRunnerWithConfiguredAgents([agent2Config], undefined, toolNames, {
+    runner2 = await createCopilotRunnerWithConfiguredAgents([agent2Config], undefined, toolNames, telemetryConfig, {
       onOperationalEvent,
     });
 
