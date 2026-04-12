@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { CustomAgentConfig } from '@github/copilot-sdk';
 import { DialogueConfig } from './configLoader';
 import { DialogueSession } from './dialogueMode';
 import { CopilotRunner } from './copilot';
@@ -41,6 +42,17 @@ const baseDialogueConfig: DialogueConfig = {
   agreementToken: 'AGREEMENT_REACHED',
 };
 
+const baseAgents: CustomAgentConfig[] = [
+  {
+    name: 'Agent One',
+    prompt: 'You are Agent One, skilled in negotiation.',
+  },
+  {
+    name: 'Agent Two',
+    prompt: 'You are Agent Two, a strategic negotiator.',
+  },
+];
+
 test('DialogueSession alternates speakers, emits events, and includes history in prompts', async () => {
   const runner1 = createFakeRunner(['A1 turn 1 reply', 'A1 turn 3 reply']);
   const runner2 = createFakeRunner(['A2 turn 2 reply']);
@@ -50,6 +62,7 @@ test('DialogueSession alternates speakers, emits events, and includes history in
   const session = new DialogueSession(
     'Negotiate terms',
     baseDialogueConfig,
+    baseAgents,
     [runner1, runner2],
     (event) => events.push(event),
     (text) => outputs.push(text),
@@ -92,6 +105,7 @@ test('DialogueSession stops early when agreement token is found', async () => {
   const session = new DialogueSession(
     'Reach agreement',
     { ...baseDialogueConfig, maxTurns: 5 },
+    baseAgents,
     [runner1, runner2],
     (event) => events.push(event),
     () => {

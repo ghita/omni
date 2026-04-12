@@ -1,0 +1,10 @@
+{
+  "agentFile": "./config/agent1.json",
+  "toolsFile": "./config/tools.json",
+  "interactive": true,
+  "visualizeEvents": true,
+  "telemetryOtlpEndpoint": "http://localhost:4318",
+  "telemetrySourceName": "omni-cli",
+  "telemetryExporterType": "otlp-http",
+  "telemetryCaptureContent": true
+}

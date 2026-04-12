@@ -1,6 +1,8 @@
 import * as fs from 'node:fs';
+import * as path from 'node:path';
 import { z } from 'zod';
 import { CustomAgentConfig } from '@github/copilot-sdk';
+import { CliActionOptions, RuntimeCliConfig, RuntimeCliConfigSchema } from './cliOptions';
 
 const ToolEntrySchema = z.union([
   z.string().min(1),
@@ -34,6 +36,8 @@ const DialogueOptionsSchema = z.object({
   agreementToken: z.string().min(1).optional().default('AGREEMENT_REACHED'),
 });
 
+const DEFAULT_RUNTIME_CONFIG_FILE = 'runtimeConfig.json';
+
 export type DialogueConfig = {
   enabled: true;
   agent1Name: string;
@@ -42,6 +46,8 @@ export type DialogueConfig = {
   stopOnAgreement: boolean;
   agreementToken: string;
 };
+
+export type { RuntimeCliConfig };
 
 function readJsonFile(filePath: string): unknown {
   const fileContent = fs.readFileSync(filePath, 'utf-8');
@@ -92,14 +98,55 @@ export function loadToolNames(toolsFilePath?: string): string[] | undefined {
   return entries.map((item) => (typeof item === 'string' ? item : item.name));
 }
 
-type DialogueOptionsInput = {
-  dialogue?: boolean;
-  dialogueAgent1?: string;
-  dialogueAgent2?: string;
-  maxTurns?: number | string;
-  stopOnAgreement?: boolean;
-  agreementToken?: string;
-};
+export function resolveDefaultRuntimeConfigPath(
+  entryScriptPath = process.argv[1],
+  cwd = process.cwd(),
+): string | undefined {
+  const searchDirs = [
+    entryScriptPath ? path.dirname(path.resolve(entryScriptPath)) : undefined,
+    path.resolve(cwd),
+  ].filter((value): value is string => Boolean(value));
+
+  const seenDirs = new Set<string>();
+  for (const dir of searchDirs) {
+    if (seenDirs.has(dir)) {
+      continue;
+    }
+    seenDirs.add(dir);
+
+    const candidate = path.join(dir, DEFAULT_RUNTIME_CONFIG_FILE);
+    if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+      return candidate;
+    }
+  }
+
+  return undefined;
+}
+
+export function loadRuntimeCliConfig(filePath?: string, required = false): RuntimeCliConfig {
+  if (!filePath) {
+    return {};
+  }
+
+  if (!fs.existsSync(filePath)) {
+    if (required) {
+      throw new Error(`Runtime config file not found: ${filePath}`);
+    }
+    return {};
+  }
+
+  const parsed = RuntimeCliConfigSchema.safeParse(readJsonFile(filePath));
+  if (!parsed.success) {
+    throw new Error(formatZodError(`Invalid runtime config format in ${filePath}`, parsed.error));
+  }
+
+  return parsed.data;
+}
+
+type DialogueOptionsInput = Pick<
+  CliActionOptions,
+  'dialogue' | 'dialogueAgent1' | 'dialogueAgent2' | 'maxTurns' | 'stopOnAgreement' | 'agreementToken'
+>;
 
 export function resolveDialogueConfig(
   options: DialogueOptionsInput,

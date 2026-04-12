@@ -48,6 +48,36 @@ Notes:
 - Use `--agreement-token <token>` to change the token.
 - Use `--no-stop-on-agreement` to always run until `--max-turns`.
 
+### Runtime defaults file
+
+Omni can load CLI defaults from a JSON file named `runtimeConfig.json`.
+
+Lookup order:
+- Same directory as the CLI entry script/executable.
+- Current working directory (fallback).
+
+You can also point to a specific file:
+
+```bash
+pnpm start --config ./config/runtime.local.json "Tell me a joke"
+```
+
+Option precedence:
+- CLI flags win over runtime config values.
+- Runtime config values win over built-in defaults.
+
+Example `runtimeConfig.json`:
+
+```json
+{
+	"agentFile": "./config/agent1.json",
+	"toolsFile": "./config/tools.json",
+	"interactive": true,
+	"visualizeEvents": true,
+	"telemetryOtlpEndpoint": "http://localhost:4318"
+}
+```
+
 ## Notes
 
 - Type `exit` in interactive mode to quit.
@@ -61,7 +91,7 @@ Notes:
 Start local trace visualization stack:
 
 ```bash
-podman compose -f docker-compose.telemetry.yml up -d
+podman compose -f docker-compose.jaeger.yml up -d
 ```
 
 Run Omni with telemetry export enabled:

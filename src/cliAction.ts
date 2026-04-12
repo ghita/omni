@@ -1,29 +1,45 @@
 import { CliDashboard } from './output';
-import { loadAgentConfigs, loadToolNames, resolveDialogueConfig } from './configLoader';
+import {
+  loadAgentConfigs,
+  loadRuntimeCliConfig,
+  loadToolNames,
+  resolveDefaultRuntimeConfigPath,
+  resolveDialogueConfig,
+  RuntimeCliConfig,
+} from './configLoader';
+import { CliActionOptions, MERGEABLE_OPTION_KEYS } from './cliOptions';
 import { buildEventHandler, runDialogueMode, runInteractiveMode, runOneShotMode } from './cliWorkflow';
 import { normalizeTelemetryConfig } from './telemetryConfig';
 
-export type CliActionOptions = {
-  agentFile?: string;
-  toolsFile?: string;
-  resume?: string;
-  interactive?: boolean;
-  visualizeEvents?: boolean;
-  dialogue?: boolean;
-  dialogueAgent1?: string;
-  dialogueAgent2?: string;
-  maxTurns?: number | string;
-  stopOnAgreement?: boolean;
-  agreementToken?: string;
-  telemetryOtlpEndpoint?: string;
-  telemetrySourceName?: string;
-  telemetryExporterType?: string;
-  telemetryFilePath?: string;
-  telemetryCaptureContent?: boolean;
-};
+function mergeCliOptionsWithRuntimeConfig(options: CliActionOptions, runtimeConfig: RuntimeCliConfig): CliActionOptions {
+  const merged: CliActionOptions = {
+    ...runtimeConfig,
+    ...(options.config !== undefined ? { config: options.config } : {}),
+  };
+
+  for (const key of MERGEABLE_OPTION_KEYS) {
+    const value = options[key];
+    if (value !== undefined) {
+      (merged as Record<string, unknown>)[key] = value;
+    }
+  }
+
+  return merged;
+}
 
 export async function runCliAction(task: string | undefined, options: CliActionOptions) {
-  const agents = loadAgentConfigs(options.agentFile);
+  const runtimeConfigPath = options.config ?? resolveDefaultRuntimeConfigPath();
+  let mergedOptions: CliActionOptions;
+  try {
+    const runtimeConfig = loadRuntimeCliConfig(runtimeConfigPath, Boolean(options.config));
+    mergedOptions = mergeCliOptionsWithRuntimeConfig(options, runtimeConfig);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error while reading runtime config';
+    console.error(message);
+    process.exit(1);
+  }
+
+  const agents = loadAgentConfigs(mergedOptions.agentFile);
   if (agents.length === 0) {
     console.error('No agents specified. Use --agent-file.');
     process.exit(1);
@@ -31,24 +47,24 @@ export async function runCliAction(task: string | undefined, options: CliActionO
 
   let toolNames: string[] | undefined;
   try {
-    toolNames = loadToolNames(options.toolsFile);
+    toolNames = loadToolNames(mergedOptions.toolsFile);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error while reading tools file';
     console.error(message);
     process.exit(1);
   }
 
-  const interactiveMode = Boolean(options.interactive);
+  const interactiveMode = Boolean(mergedOptions.interactive);
   let dialogueConfig;
   try {
-    dialogueConfig = resolveDialogueConfig(options, agents);
+    dialogueConfig = resolveDialogueConfig(mergedOptions, agents);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error while reading dialogue options';
     console.error(message);
     process.exit(1);
   }
-  const visualizeEvents = options.visualizeEvents !== false;
-  const telemetryConfig = normalizeTelemetryConfig(options);
+  const visualizeEvents = mergedOptions.visualizeEvents !== false;
+  const telemetryConfig = normalizeTelemetryConfig(mergedOptions);
   const dashboard = new CliDashboard({ enabled: interactiveMode && visualizeEvents });
   const onOperationalEvent = buildEventHandler(visualizeEvents, interactiveMode, dashboard);
 
@@ -56,7 +72,7 @@ export async function runCliAction(task: string | undefined, options: CliActionO
     if (interactiveMode) {
       throw new Error('Dialogue mode cannot be used with --interactive.');
     }
-    if (options.resume) {
+    if (mergedOptions.resume) {
       throw new Error('Dialogue mode does not support --resume.');
     }
     if (!task) {
@@ -68,7 +84,15 @@ export async function runCliAction(task: string | undefined, options: CliActionO
   }
 
   if (interactiveMode) {
-    await runInteractiveMode(agents, options.resume, toolNames, visualizeEvents, dashboard, onOperationalEvent, telemetryConfig);
+    await runInteractiveMode(
+      agents,
+      mergedOptions.resume,
+      toolNames,
+      visualizeEvents,
+      dashboard,
+      onOperationalEvent,
+      telemetryConfig,
+    );
     return;
   }
 
@@ -77,5 +101,5 @@ export async function runCliAction(task: string | undefined, options: CliActionO
     process.exit(1);
   }
 
-  await runOneShotMode(task, agents, options.resume, toolNames, onOperationalEvent, telemetryConfig);
+  await runOneShotMode(task, agents, mergedOptions.resume, toolNames, onOperationalEvent, telemetryConfig);
 }

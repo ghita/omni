@@ -7,6 +7,7 @@ export function createCliProgram(): Command {
   program
     .name('copilot-agents')
     .description('CLI for running tasks with configurable Copilot agents')
+    .option('-c, --config <file>', 'Path to runtime JSON config for CLI defaults')
     .option('-f, --agent-file <file>', 'Path to JSON file with agent definitions (array or object)')
     .option('-t, --tools-file <file>', 'Path to JSON file with tool definitions')
     .option('-r, --resume <sessionId>', 'Resume a previous session')
