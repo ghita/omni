@@ -3,6 +3,7 @@ import { CliDashboard } from './output';
 import { OperationalEvent } from './events';
 import { CustomAgentConfig, TelemetryConfig } from '@github/copilot-sdk';
 import * as readline from 'node:readline';
+import { createSessionTraceContext } from './tracing.js';
 export { runDialogueMode } from './dialogueMode';
 
 export type OperationalEventHandler = (event: OperationalEvent) => void;
@@ -35,9 +36,16 @@ export async function runInteractiveMode(
   onOperationalEvent: OperationalEventHandler,
   telemetryConfig?: TelemetryConfig,
 ) {
-  const runner = await createCopilotRunnerWithConfiguredAgents(agents, resume, toolNames, telemetryConfig, {
-    onOperationalEvent,
-  });
+  const sessionTraceContext = createSessionTraceContext();
+
+  const runner = await createCopilotRunnerWithConfiguredAgents(
+    agents,
+    resume,
+    toolNames,
+    telemetryConfig,
+    { onOperationalEvent },
+    () => sessionTraceContext,
+  );
 
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
   const prompt = (q: string) => new Promise<string>((resolve) => rl.question(q, resolve));
