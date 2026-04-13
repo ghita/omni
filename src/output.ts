@@ -1,6 +1,6 @@
 import { OperationalEvent } from './events';
 import { DashboardRenderer } from './outputRenderer';
-import { DashboardState } from './outputState';
+import { DashboardSnapshot, DashboardState } from './outputState';
 
 type DashboardOptions = {
   enabled: boolean;
@@ -14,6 +14,7 @@ export class CliDashboard {
   private readonly enabled: boolean;
   private readonly state: DashboardState;
   private readonly renderer: DashboardRenderer;
+  private lastRenderedSnapshot: DashboardSnapshot | null = null;
 
   constructor(options: DashboardOptions) {
     this.enabled = options.enabled;
@@ -22,16 +23,25 @@ export class CliDashboard {
   }
 
   setStatus(status: string) {
+    if (!this.enabled) {
+      return;
+    }
     this.state.setStatus(status);
     this.render();
   }
 
   setLastExchange(userPrompt: string, assistantReply: string) {
+    if (!this.enabled) {
+      return;
+    }
     this.state.setLastExchange(userPrompt, assistantReply);
     this.render();
   }
 
   addEvent(event: OperationalEvent) {
+    if (!this.enabled) {
+      return;
+    }
     this.state.addEvent(event);
     this.render();
   }
@@ -44,11 +54,43 @@ export class CliDashboard {
   }
 
   // Renders the dashboard in the terminal. Clears the terminal and redraws the entire dashboard on each render.
+  // Skips rendering if nothing has changed since the last render.
   render() {
     if (!this.enabled || !process.stdout.isTTY) {
       return;
     }
 
-    this.renderer.render(this.state.getSnapshot());
+    const snapshot = this.state.getSnapshot();
+    if (this.snapshotsEqual(this.lastRenderedSnapshot, snapshot)) {
+      return;
+    }
+
+    this.renderer.render(snapshot);
+    this.lastRenderedSnapshot = snapshot;
+  }
+
+  private snapshotsEqual(a: DashboardSnapshot | null, b: DashboardSnapshot): boolean {
+    if (!a) {
+      return false;
+    }
+    return (
+      a.status === b.status &&
+      a.lastUserPrompt === b.lastUserPrompt &&
+      a.lastAssistantReply === b.lastAssistantReply &&
+      this.arraysEqual(a.events, b.events) &&
+      this.arraysEqual(a.executionLines, b.executionLines)
+    );
+  }
+
+  private arraysEqual<T>(a: T[], b: T[]): boolean {
+    if (a.length !== b.length) {
+      return false;
+    }
+    for (let i = 0; i < a.length; i++) {
+      if (a[i] !== b[i]) {
+        return false;
+      }
+    }
+    return true;
   }
 }

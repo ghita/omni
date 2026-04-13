@@ -11,6 +11,8 @@ export type CopilotOutputHandlers = {
     onOperationalEvent?: (event: OperationalEvent) => void;
 };
 
+export type TraceContextProvider = () => { traceparent?: string; tracestate?: string };
+
 export type CopilotRunner = {
     sendTask: (task: string) => Promise<string | undefined>;
     close: () => Promise<void>;
@@ -27,12 +29,14 @@ export async function createCopilotRunnerWithConfiguredAgents(
     toolNames?: string[],
     telemetry?: TelemetryConfig,
     handlers?: CopilotOutputHandlers,
+    onGetTraceContext?: TraceContextProvider,
 ): Promise<CopilotRunner> {
     const serviceName = telemetry ? normalizedServiceNameFromTelemetry(telemetry) : undefined;
     const client = telemetry
         ? new CopilotClient({
             telemetry,
             ...(serviceName ? { env: { ...process.env, OTEL_SERVICE_NAME: serviceName } } : {}),
+	        ...(onGetTraceContext ? { onGetTraceContext } : {})
         })
         : new CopilotClient();
     const tools = resolveTools(toolNames);

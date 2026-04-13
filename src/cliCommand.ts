@@ -25,7 +25,23 @@ export function createCliProgram(): Command {
     .option('--telemetry-file-path <path>', 'Enable telemetry file exporter by writing JSON lines to a file')
     .option('--telemetry-capture-content', 'Capture prompt/response content in telemetry spans')
     .argument('[task]', 'Task prompt to resolve in one-shot mode')
-    .action(async (task, options) => {
+    .action(async (task, options, command) => {
+      // Fix Commander's --no- option behavior: 
+      // When --no-visualize-events is passed, Commander sets options.visualizeEvents = false
+      // When NOT passed, Commander sets options.visualizeEvents = true (the default)
+      // This means runtime config can never have visualizeEvents: false because CLI always sets it to true
+      // Solution: set CLI value to undefined when not explicitly passed
+      const rawArgs = process.argv.slice(2);
+      
+      if (!rawArgs.includes('--no-visualize-events')) {
+        // Not explicitly set, let runtime config decide
+        delete (options as Record<string, unknown>).visualizeEvents;
+      }
+      
+      if (!rawArgs.includes('--no-stop-on-agreement')) {
+        delete (options as Record<string, unknown>).stopOnAgreement;
+      }
+      
       await runCliAction(task, options);
     });
 

@@ -29,9 +29,10 @@ function mergeCliOptionsWithRuntimeConfig(options: CliActionOptions, runtimeConf
 
 export async function runCliAction(task: string | undefined, options: CliActionOptions) {
   const runtimeConfigPath = options.config ?? resolveDefaultRuntimeConfigPath();
+  let runtimeConfig: RuntimeCliConfig = {};
   let mergedOptions: CliActionOptions;
   try {
-    const runtimeConfig = loadRuntimeCliConfig(runtimeConfigPath, Boolean(options.config));
+    runtimeConfig = loadRuntimeCliConfig(runtimeConfigPath, Boolean(options.config));
     mergedOptions = mergeCliOptionsWithRuntimeConfig(options, runtimeConfig);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error while reading runtime config';
