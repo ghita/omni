@@ -1,153 +1,213 @@
 # Omni
 
-A CLI tool for running tasks with configurable Copilot agents.
+> 🚀 **Run GitHub Copilot agents from the command line with powerful automation capabilities.**
 
-## Installation
+Omni is a CLI tool that orchestrates configurable Copilot agents for complex tasks—from simple one-shot queries to multi-agent negotiations with full observability.
+
+---
+
+## ✨ Features
+
+- **🤖 Multiple Agent Modes** — One-shot execution, interactive sessions, or multi-agent dialogue
+- **🛠️ Custom Tooling** — Extend agents with your own tools via simple JSON configuration
+- **📊 Real-time Dashboard** — Live event visualization and conversation tracking in interactive mode
+- **📡 OpenTelemetry Support** — Full observability with Jaeger integration for tracing and debugging
+- **💾 Session Persistence** — Resume previous sessions with state restoration
+- **⚙️ Runtime Configuration** — Flexible config files and CLI overrides
+
+---
+
+## 🚀 Quick Start
+
+### Installation
 
 ```bash
 pnpm install
 ```
 
-## Usage
-
-### One-shot mode
-
-Assistant reply is written to stdout, operational events to stderr:
+### Run Your First Task
 
 ```bash
-pnpm start --agent-file ./config/agent1.json "Tell me a joke"
-pnpm start --agent-file ./config/agent1.json --tools-file ./config/tools.json "Tell me a joke"
+# One-shot mode (output to stdout)
+pnpm start --agent-file ./config/agent1.json "Explain quantum computing"
+
+# Interactive mode (live dashboard)
+pnpm start --agent-file ./config/agent1.json --interactive
 ```
 
-### Interactive mode
+---
 
-Same-terminal dashboard with separate Events and Conversation sections:
+## 📖 Usage Modes
+
+### One-Shot Mode
+
+Execute a single task. Assistant output goes to stdout, operational events to stderr:
+
+```bash
+pnpm start --agent-file ./config/agent1.json "Refactor this function to use async/await"
+
+# With custom tools
+pnpm start --agent-file ./config/agent1.json --tools-file ./config/tools.json "Analyze codebase"
+```
+
+### Interactive Mode
+
+Same-terminal dashboard with separate Events and Conversation panels:
 
 ```bash
 pnpm start --agent-file ./config/agent1.json --interactive
-pnpm start --agent-file ./config/agent1.json --tools-file ./config/tools.json --interactive
-```
 
-### Disable event visualization
-
-```bash
+# Disable event visualization for cleaner output
 pnpm start --agent-file ./config/agent1.json --interactive --no-visualize-events
 ```
 
-### Dialogue mode (two-agent negotiation)
+> 💡 **Tip:** Type `exit` in interactive mode to quit.
 
-Run a structured, turn-by-turn conversation between two configured agents:
+### Dialogue Mode (Multi-Agent Negotiation)
 
-```bash
-pnpm start --agent-file ./config/agents.json --dialogue --dialogue-agent1 seller --dialogue-agent2 buyer --max-turns 10 "Negotiate a high-volume gold purchase price."
-```
-
-Notes:
-- Agent 1 speaks first.
-- Dialogue stops early if a response includes the agreement token (default: `AGREEMENT_REACHED`).
-- Use `--agreement-token <token>` to change the token.
-- Use `--no-stop-on-agreement` to always run until `--max-turns`.
-
-### Runtime defaults file
-
-Omni can load CLI defaults from a JSON file named `runtimeConfig.json`.
-
-Lookup order:
-- Same directory as the CLI entry script/executable.
-- Current working directory (fallback).
-
-You can also point to a specific file:
+Run structured, turn-by-turn conversations between two agents:
 
 ```bash
-pnpm start --config ./config/runtime.local.json "Tell me a joke"
+pnpm start --agent-file ./config/agents.json \
+  --dialogue \
+  --dialogue-agent1 seller \
+  --dialogue-agent2 buyer \
+  --max-turns 10 \
+  "Negotiate a high-volume gold purchase price."
 ```
 
-Option precedence:
-- CLI flags win over runtime config values.
-- Runtime config values win over built-in defaults.
+**Dialogue Options:**
+| Flag | Description |
+|------|-------------|
+| `--agreement-token <token>` | Token that stops dialogue when mentioned (default: `AGREEMENT_REACHED`) |
+| `--no-stop-on-agreement` | Continue until `--max-turns` even if agreement is reached |
 
-Example `runtimeConfig.json`:
+---
+
+## ⚙️ Configuration
+
+### Runtime Configuration File
+
+Create a `runtimeConfig.json` in your project root to set defaults:
 
 ```json
 {
-	"agentFile": "./config/agent1.json",
-	"toolsFile": "./config/tools.json",
-	"interactive": true,
-	"visualizeEvents": true,
-	"telemetryOtlpEndpoint": "http://localhost:4318"
+  "agentFile": "./config/agent1.json",
+  "toolsFile": "./config/tools.json",
+  "interactive": true,
+  "visualizeEvents": true,
+  "telemetryOtlpEndpoint": "http://localhost:4318"
 }
 ```
 
-## Notes
+**Config Lookup Order:**
+1. Directory containing the CLI executable
+2. Current working directory (fallback)
 
-- Type `exit` in interactive mode to quit.
-- In one-shot mode, pass a task argument unless using `--interactive`.
-- In dialogue mode, pass a task argument to seed the negotiation context.
-- Use `--resume <sessionId>` to resume a previous session.
-- Session activity is persisted to a single JSON file at `~/.copilot/session-state/<sessionId>/session-activity.json`.
+**Override with custom path:**
+```bash
+pnpm start --config ./config/runtime.local.json "Your task here"
+```
 
-## Telemetry (OpenTelemetry + Jaeger)
+**Option Precedence:** CLI flags → Runtime config → Built-in defaults
 
-Start local trace visualization stack:
+### Agent & Tool Definitions
+
+- **Agent configs**: JSON files (single object or array) passed via `--agent-file`
+- **Tool configs**: JSON files passed via `--tools-file`
+
+See the [`config/`](./config/) directory for examples.
+
+---
+
+## 📊 Telemetry & Observability
+
+Omni exports OpenTelemetry traces for full visibility into agent operations.
+
+### Quick Setup
 
 ```bash
+# Start Jaeger
 podman compose -f docker-compose.jaeger.yml up -d
+
+# Run with telemetry
+pnpm start --agent-file ./config/agent1.json \
+  --telemetry-otlp-endpoint http://localhost:4318 \
+  --telemetry-source-name omni-cli \
+  --telemetry-capture-content \
+  "Your task here"
 ```
 
-Run Omni with telemetry export enabled:
+View traces at: **http://localhost:16686**
+
+### Telemetry Flags
+
+| Flag | Description |
+|------|-------------|
+| `--telemetry-otlp-endpoint <url>` | OTLP HTTP endpoint for trace export |
+| `--telemetry-source-name <name>` | Service name shown in Jaeger |
+| `--telemetry-exporter-type <type>` | `otlp-http` or `file` |
+| `--telemetry-file-path <path>` | File path when using file exporter |
+| `--telemetry-capture-content` | Include message content in traces |
+
+📄 See [`doc/telemetry.md`](./doc/telemetry.md) for detailed setup and troubleshooting.
+
+---
+
+## 🔧 Building & Development
 
 ```bash
-pnpm start --agent-file .\config\agent1.json --telemetry-otlp-endpoint http://localhost:4318 --telemetry-source-name omni-cli --telemetry-capture-content "Tell me a joke"
-```
-
-View traces in Jaeger at `http://localhost:16686`.
-The `--telemetry-source-name` value is also used as OpenTelemetry `service.name`, so Jaeger shows it in the Service dropdown.
-
-CLI telemetry flags:
-- `--telemetry-otlp-endpoint <url>`
-- `--telemetry-source-name <name>`
-- `--telemetry-exporter-type <otlp-http|file>`
-- `--telemetry-file-path <path>`
-- `--telemetry-capture-content`
-
-See `doc\telemetry.md` for full setup, architecture, troubleshooting, and file-export mode.
-
-## Build
-
-```bash
+# Build TypeScript
 pnpm build
+
+# Run tests
+pnpm test
 ```
 
-## Configuration
+---
 
-Agent definitions are JSON files (array or single object) passed via `--agent-file`.  
-Tool definitions are JSON files passed via `--tools-file`.
+## 🏗️ Architecture
 
-See the `config/` directory for examples.
+| File | Purpose |
+|------|---------|
+| `src/cli.ts` | Entry point |
+| `src/cliCommand.ts` | CLI argument parsing & command setup |
+| `src/cliAction.ts` | Runtime mode routing |
+| `src/cliWorkflow.ts` | Interactive loop & execution helpers |
+| `src/configLoader.ts` | Zod-validated config loading |
+| `src/copilot.ts` | Copilot session lifecycle |
+| `src/eventMapper.ts` | Event translation layer |
+| `src/outputState.ts` | Dashboard state management |
+| `src/outputRenderer.ts` | Terminal rendering |
+| `src/output.ts` | Dashboard facade |
 
-## Architecture
+---
 
-- `src/cli.ts`: thin entrypoint.
-- `src/cliCommand.ts`: CLI command/options wiring.
-- `src/cliAction.ts`: runtime mode routing (interactive vs one-shot).
-- `src/cliWorkflow.ts`: interactive loop + one-shot execution helpers.
-- `src/configLoader.ts`: `zod`-validated config loading for agent/tool files.
-- `src/copilot.ts`: Copilot session lifecycle orchestration.
-- `src/eventMapper.ts`: session event to operational event translation.
-- `src/outputState.ts`: dashboard state model and execution tracking.
-- `src/outputRenderer.ts`: terminal rendering for dashboard snapshots.
-- `src/output.ts`: dashboard facade used by CLI workflows.
+## 🧩 Extending Omni
 
-## Extending Tools
+### Adding Custom Tools
 
-1. Add a new tool definition in `src/tools/`.
-2. Register the tool in `src/tools.ts`.
-3. Reference the tool name in a tools config file passed via `--tools-file`.
+1. Create tool definition in `src/tools/<your-tool>.ts`
+2. Register in `src/tools.ts`
+3. Reference tool name in your tools config file
 
-If the tools file is invalid, the CLI now reports schema validation errors with paths.
+> ✅ Schema validation errors include full paths for easier debugging.
 
-## Extending Event Mapping
+### Extending Event Mapping
 
-1. Add event translation logic in `src/eventMapper.ts`.
-2. Keep emitted shape aligned with `OperationalEvent` in `src/events.ts`.
-3. If dashboard behavior changes, update `src/outputState.ts` and related tests.
+1. Add translation logic in `src/eventMapper.ts`
+2. Align with `OperationalEvent` type in `src/events.ts`
+3. Update `src/outputState.ts` if dashboard behavior changes
+
+---
+
+## 📝 Session Management
+
+- **Resume sessions:** `pnpm start --resume <sessionId>`
+- **Session data stored at:** `~/.copilot/session-state/<sessionId>/session-activity.json`
+
+---
+
+## 📄 License
+
+[MIT](./LICENSE)
