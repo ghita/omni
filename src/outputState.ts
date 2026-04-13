@@ -42,6 +42,7 @@ export type DashboardSnapshot = {
   status: string;
   lastUserPrompt: string;
   lastAssistantReply: string;
+  isStreaming: boolean;
 };
 
 export class DashboardState {
@@ -53,6 +54,8 @@ export class DashboardState {
   private status = 'idle';
   private lastUserPrompt = '';
   private lastAssistantReply = '';
+  private streamingContent = '';
+  private isStreaming = false;
 
   constructor(options: { maxEvents?: number }) {
     this.maxEvents = options.maxEvents ?? 8;
@@ -65,6 +68,22 @@ export class DashboardState {
   setLastExchange(userPrompt: string, assistantReply: string) {
     this.lastUserPrompt = userPrompt;
     this.lastAssistantReply = assistantReply;
+  }
+
+  appendStreamingContent(chunk: string) {
+    this.streamingContent += chunk;
+    this.isStreaming = true;
+  }
+
+  finalizeStreamingContent() {
+    this.lastAssistantReply = this.streamingContent;
+    this.streamingContent = '';
+    this.isStreaming = false;
+  }
+
+  clearStreamingContent() {
+    this.streamingContent = '';
+    this.isStreaming = false;
   }
 
   addEvent(event: OperationalEvent) {
@@ -98,7 +117,8 @@ export class DashboardState {
       executionLines: this.renderExecutionLines(),
       status: this.status,
       lastUserPrompt: this.lastUserPrompt,
-      lastAssistantReply: this.lastAssistantReply,
+      lastAssistantReply: this.isStreaming ? this.streamingContent : this.lastAssistantReply,
+      isStreaming: this.isStreaming,
     };
   }
 

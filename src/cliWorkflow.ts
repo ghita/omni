@@ -1,4 +1,4 @@
-import { createCopilotRunnerWithConfiguredAgents, runCopilotTaskWithConfiguredAgents } from './copilot';
+import { createCopilotRunnerWithConfiguredAgents, runCopilotTaskWithConfiguredAgents, CopilotRunner } from './copilot';
 import { CliDashboard } from './output';
 import { OperationalEvent } from './events';
 import { CustomAgentConfig, TelemetryConfig } from '@github/copilot-sdk';
@@ -7,6 +7,17 @@ import { createSessionTraceContext } from './tracing.js';
 export { runDialogueMode } from './dialogueMode';
 
 export type OperationalEventHandler = (event: OperationalEvent) => void;
+
+export type CreateRunnerFn = (
+  agents: CustomAgentConfig[],
+  resume: string | undefined,
+  toolNames: string[] | undefined,
+  telemetry: TelemetryConfig | undefined,
+  handlers: { onOperationalEvent?: OperationalEventHandler },
+  traceContextProvider: () => { traceparent?: string; tracestate?: string },
+) => Promise<CopilotRunner>;
+
+export type PromptFn = (question: string) => Promise<string>;
 
 export function buildEventHandler(
   visualizeEvents: boolean,
@@ -35,10 +46,12 @@ export async function runInteractiveMode(
   dashboard: CliDashboard,
   onOperationalEvent: OperationalEventHandler,
   telemetryConfig?: TelemetryConfig,
+  createRunner: CreateRunnerFn = createCopilotRunnerWithConfiguredAgents,
+  promptFn?: PromptFn,
 ) {
   const sessionTraceContext = createSessionTraceContext();
 
-  const runner = await createCopilotRunnerWithConfiguredAgents(
+  const runner = await createRunner(
     agents,
     resume,
     toolNames,
@@ -48,7 +61,7 @@ export async function runInteractiveMode(
   );
 
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-  const prompt = (q: string) => new Promise<string>((resolve) => rl.question(q, resolve));
+  const prompt = promptFn ?? ((q: string) => new Promise<string>((resolve) => rl.question(q, resolve)));
 
   dashboard.setStatus('ready');
   if (!visualizeEvents) {
@@ -67,20 +80,41 @@ export async function runInteractiveMode(
       }
 
       dashboard.setStatus('waiting for assistant');
-      const response = await runner.sendTask(trimmedInput);
-      const assistantReply = response ?? '';
-      dashboard.setLastExchange(trimmedInput, assistantReply);
-      dashboard.setStatus('ready');
+      dashboard.clearStreamingContent();
 
-      if (!visualizeEvents) {
-        console.log(`Assistant: ${assistantReply}`);
+      let assistantReply = '';
+      if (visualizeEvents) {
+        // Use streaming for interactive dashboard mode
+        assistantReply = (await runner.sendTaskStreaming(trimmedInput, (chunk) => {
+          dashboard.appendStreamingContent(chunk);
+        })) ?? '';
+        dashboard.finalizeStreamingContent();
+      } else {
+        // Non-visual mode: stream directly to console
+        process.stdout.write('Assistant: ');
+        assistantReply = (await runner.sendTaskStreaming(trimmedInput, (chunk) => {
+          process.stdout.write(chunk);
+        })) ?? '';
+        process.stdout.write('\n');
+        dashboard.setLastExchange(trimmedInput, assistantReply);
       }
+
+      dashboard.setStatus('ready');
     }
   } finally {
     rl.close();
     await runner.close();
   }
 }
+
+export type RunCopilotTaskFn = (
+  task: string,
+  agents: CustomAgentConfig[],
+  resume: string | undefined,
+  toolNames: string[] | undefined,
+  telemetry: TelemetryConfig | undefined,
+  handlers: { onOperationalEvent?: OperationalEventHandler },
+) => Promise<string | undefined>;
 
 export async function runOneShotMode(
   task: string,
@@ -89,8 +123,9 @@ export async function runOneShotMode(
   toolNames: string[] | undefined,
   onOperationalEvent: OperationalEventHandler,
   telemetryConfig?: TelemetryConfig,
+  runTask: RunCopilotTaskFn = runCopilotTaskWithConfiguredAgents,
 ) {
-  const result = await runCopilotTaskWithConfiguredAgents(task, agents, resume, toolNames, telemetryConfig, {
+  const result = await runTask(task, agents, resume, toolNames, telemetryConfig, {
     onOperationalEvent,
   });
 

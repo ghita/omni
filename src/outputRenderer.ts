@@ -28,7 +28,8 @@ export class DashboardRenderer {
       lines.push(`You: ${snapshot.lastUserPrompt}`);
     }
     if (snapshot.lastAssistantReply) {
-      lines.push(`Assistant: ${snapshot.lastAssistantReply}`);
+      const streamingIndicator = snapshot.isStreaming ? ' ▌' : '';
+      lines.push(`Assistant: ${snapshot.lastAssistantReply}${streamingIndicator}`);
     }
 
     process.stdout.write('\x1b[2J\x1b[H');

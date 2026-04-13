@@ -142,6 +142,22 @@ export function createEventMapper() {
           toolName,
         };
       }
+      case 'assistant.message_delta': {
+        const deltaContent = stringFrom(event.data.deltaContent) ?? '';
+        const messageId = stringFrom(event.data.messageId) ?? '';
+        const parentToolCallId = stringFrom(event.data.parentToolCallId);
+
+        return {
+          timestamp,
+          type: event.type,
+          status: 'running',
+          summary: `Streaming: ${deltaContent.length} chars`,
+          category: 'streaming',
+          deltaContent,
+          messageId,
+          parentToolCallId,
+        };
+      }
       default:
         return undefined;
     }

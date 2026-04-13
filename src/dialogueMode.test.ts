@@ -27,6 +27,16 @@ function createFakeRunner(replies: string[]): FakeRunner {
       index += 1;
       return reply;
     },
+    sendTaskStreaming: async (prompt: string, onChunk: (chunk: string) => void) => {
+      prompts.push(prompt);
+      const reply = replies[index] ?? '';
+      index += 1;
+      // Simulate streaming by sending the whole reply as one chunk
+      if (reply) {
+        onChunk(reply);
+      }
+      return reply;
+    },
     close: async () => {
       closedCount += 1;
     },

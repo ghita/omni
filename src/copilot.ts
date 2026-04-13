@@ -9,12 +9,14 @@ export type { OperationalEvent } from './events';
 
 export type CopilotOutputHandlers = {
     onOperationalEvent?: (event: OperationalEvent) => void;
+    onStreamingContent?: (chunk: string) => void;
 };
 
 export type TraceContextProvider = () => { traceparent?: string; tracestate?: string };
 
 export type CopilotRunner = {
     sendTask: (task: string) => Promise<string | undefined>;
+    sendTaskStreaming: (task: string, onChunk: (chunk: string) => void) => Promise<string | undefined>;
     close: () => Promise<void>;
 };
 
@@ -100,8 +102,23 @@ export async function createCopilotRunnerWithConfiguredAgents(
     activityLogger.recordEvent(logPathEvent);
 
     const mapEvent = createEventMapper();
+    let streamingCallback: ((chunk: string) => void) | null = null;
+    let accumulatedContent = '';
+
     const unsubscribe = session.on((event) => {
-        const mappedEvent = mapEvent(event as SessionEvent);
+        const sessionEvent = event as SessionEvent;
+
+        // Handle streaming content deltas separately
+        if (sessionEvent.type === 'assistant.message_delta') {
+            const deltaContent = String(sessionEvent.data?.deltaContent ?? '');
+            if (deltaContent) {
+                accumulatedContent += deltaContent;
+                streamingCallback?.(deltaContent);
+            }
+            return;
+        }
+
+        const mappedEvent = mapEvent(sessionEvent);
         if (mappedEvent) {
             handlers?.onOperationalEvent?.(mappedEvent);
             activityLogger.recordEvent(mappedEvent);
@@ -114,6 +131,26 @@ export async function createCopilotRunnerWithConfiguredAgents(
             const assistantReply = response?.data.content ?? '';
             activityLogger.recordTurn(task, assistantReply);
             return response?.data.content;
+        },
+        sendTaskStreaming: async (task: string, onChunk: (chunk: string) => void) => {
+            accumulatedContent = '';
+            streamingCallback = onChunk;
+
+            try {
+                const response = await session.sendAndWait({ prompt: task });
+                // If no streaming events fired, use the response content
+                if (accumulatedContent === '') {
+                    const content = response?.data.content ?? '';
+                    if (content) {
+                        onChunk(content);
+                    }
+                    accumulatedContent = content;
+                }
+                activityLogger.recordTurn(task, accumulatedContent);
+                return accumulatedContent;
+            } finally {
+                streamingCallback = null;
+            }
         },
         close: async () => {
             unsubscribe();

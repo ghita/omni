@@ -38,6 +38,31 @@ export class CliDashboard {
     this.render();
   }
 
+  appendStreamingContent(chunk: string) {
+    if (!this.enabled) {
+      process.stdout.write(chunk);
+      return;
+    }
+    this.state.appendStreamingContent(chunk);
+    this.render();
+  }
+
+  finalizeStreamingContent() {
+    if (!this.enabled) {
+      return;
+    }
+    this.state.finalizeStreamingContent();
+    this.render();
+  }
+
+  clearStreamingContent() {
+    if (!this.enabled) {
+      return;
+    }
+    this.state.clearStreamingContent();
+    this.render();
+  }
+
   addEvent(event: OperationalEvent) {
     if (!this.enabled) {
       return;
@@ -77,6 +102,7 @@ export class CliDashboard {
       a.status === b.status &&
       a.lastUserPrompt === b.lastUserPrompt &&
       a.lastAssistantReply === b.lastAssistantReply &&
+      a.isStreaming === b.isStreaming &&
       this.arraysEqual(a.events, b.events) &&
       this.arraysEqual(a.executionLines, b.executionLines)
     );
